@@ -1,23 +1,25 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { Text, View } from 'react-native';
+import { ActivityIndicator } from 'react-native-paper';
 
-import LoginScreen from './screens/LoginScreen';
-import RegisterScreen from './screens/RegisterScreen';
-import HomeScreen from './screens/HomeScreen';
-import PostImageScreen from './screens/PostImageScreen';
-
-const Stack = createStackNavigator();
-
-export default function RootNavigation() {
-    return (
-        <NavigationContainer>
-            <Stack.Navigator>
-                <Stack.Screen name='LoginScreen' component={LoginScreen} options={{headerShown: false}} />
-                <Stack.Screen name='RegisterScreen' component={RegisterScreen} options={{headerShown: false}} />
-                <Stack.Screen name='HomeScreen' component={HomeScreen} options={{headerShown: false}} />
-                <Stack.Screen name='PostImageScreen' component={PostImageScreen} options={{headerShown: false}} />
-            </Stack.Navigator>
-        </NavigationContainer>
-    );
+const LoadingScreen = ( {size, color, title} ) => {
+  return (
+    <View style={{
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    }}>
+      <ActivityIndicator size={size} color={color} />
+      <View style={{
+        marginTop: 20,
+      }}>
+        <Text style={{
+          fontSize: 20,
+        }}>
+            {title}
+        </Text>
+      </View>
+    </View>
+  );
 };
+export default LoadingScreen;

@@ -1,153 +1,142 @@
-import React, { useState, useEffect } from 'react';
-import { Text } from 'react-native';
+import React, { useState } from 'react';
+import { Text, View, Image } from 'react-native';
 
+import * as ImagePicker from 'expo-image-picker';
 import * as Animatable from 'react-native-animatable';
 
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../configs/firebase';
+import { addDoc, collection } from 'firebase/firestore';
+import { db, storage } from '../configs/firebase';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
-import InputType from '../components/InputType';
 import ButtonType from '../components/ButtonType';
+import FooterBar from '../components/FooterBar';
 
+const PostImageScreen = () => {
+    const [getImage, setImage] = useState(null);
 
-const LoginScreen = ({navigation}) => {
-    const [getInputs, setInputs] = useState({
-        email: '',
-        password: '',
-    });
+    const pickImage = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.All,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+        });
 
-    const handleLogin = () => {
-        if (getInputs['email'] !== '' && getInputs['password'] !== '') {
-            signInWithEmailAndPassword(auth, getInputs['email'], getInputs['password'])
-            .then(() => {
-                navigation.navigate('HomeScreen')
-                setInputs({
-                    email: '',
-                    password: '',
-                })
-            })
-            .catch((error) => {
-                alert(`Email ou senha incorretos`)
-                console.log(error)
-            });
-        } else {
-            alert('* Todos os campos devem ser preenchidos.')
+        console.log(result);
+
+        if (!result.canceled) {
+            setImage(result.assets[0].uri);
         }
     };
 
-    useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged((user) => {
-            if (user) {
-                navigation.navigate('HomeScreen');
-            }
-        });
-        return unsubscribe;
-    }, [])
+    const uploadImageToFirebase = async () => {
+        try {
+            const response = await fetch(getImage);
+            const blob = await response.blob();
+
+            const storageRef = ref(storage, 'images/' + Date.now());
+            const uploadTask = uploadBytes(storageRef, blob);
+
+            await uploadTask;
+
+            const imageURL = await getDownloadURL(storageRef);
+            setImageToFirebase(imageURL);
+        } catch (error) {
+            console.error('Error uploading image: ', error);
+        }
+    };
+
+    const setImageToFirebase = async (imageURL) => {
+        try {
+            const ref = collection(db, 'images');
+            await addDoc(ref, { imageURL });
+
+            console.log('Image URL added to Firestore');
+            setImage(null);
+        } catch (error) {
+            console.error('Error adding image URL to Firestore: ', error);
+            setImage(null);
+        }
+    };
 
     return (
         <>
             <Animatable.View
+                animation="fadeInLeftBig"
+                delay={100}
                 style={{
                     flex: 1,
                     alignItems: 'center',
                     paddingTop: 30,
                 }}
             >
-                <Animatable.Text
-                    animation='fadeInRight'
-                    delay={500}
+                <Text
                     style={{
-                        fontSize: 30,
+                        fontSize: 25,
                         borderBottomWidth: 1,
                         borderBottomColor: '#000',
-                        paddingBottom: 10,
+                        paddingBottom: 5,
                         fontWeight: 'bold',
-                    }}
-                >
-                    Logar-se
-                </Animatable.Text>
-
-                <Animatable.View
-                    animation='fadeInLeft'
-                    delay={500}
-                    style={{
                         width: '90%',
-                        marginTop: 30,
-                        marginBottom: 20,
+                        textAlign: 'center',
                     }}
                 >
-                    <InputType
-                        label='Email'
-                        placeholder='Email'
-                        keyboardType='email-address'
-                        value={getInputs['email']}
-                        onChangeText={(e) => setInputs({ ...getInputs, email: e })}
-                    />
-                </Animatable.View>
+                    Publicar Imagem
+                </Text>
 
-                <Animatable.View
-                    animation='fadeInLeft'
-                    delay={500}
+                <View
                     style={{
-                        width: '90%',
-                        marginBottom: 20,
+                        width: '100%',
+                        alignItems: 'center',
                     }}
                 >
-                    <InputType
-                        label='Senha'
-                        secureTextEntry={true}
-                        value={getInputs['password']}
-                        onChangeText={(e) => setInputs({ ...getInputs, password: e })}
-                        placeholder='Senha'
-                    />
-                </Animatable.View>
 
-                {/* <View
-                    style={{
-                        width: '90%',
-                        marginVertical: 20,
-                        alignItems: 'flex-end',
-                    }}
-                >
-                    <Text
-                        style={{
-                            color: '#000',
-                            fontWeight: 'bold',
-                        }}
-                    >
-                        Esqueceu a senha ?
-                    </Text>
-                </View> */}
+                    {getImage
+                    ?
+                        <>
+                            <View
+                                style={{
+                                    marginTop: 10,
+                                }}
+                            >
+                                <Image source={{ uri: getImage }} style={{ width: 200, height: 200 }} />
+                            </View>
+                            <View
+                                style={{
+                                    width: '90%',
+                                    marginTop: 10,
+                                    marginBottom: 20,
+                                }}
+                            >
+                                <ButtonType
+                                    onPress={() => uploadImageToFirebase()}
+                                >
+                                    Enviar
+                                </ButtonType>
+                            </View>
+                        </>
+                    :
+                        <View
+                            style={{
+                                width: '90%',
+                                marginTop: 10,
+                                marginBottom: 20,
+                            }}
+                        >
+                            <ButtonType
+                                onPress={() => pickImage()}
+                            >
+                                Selecionar Imagem
+                            </ButtonType>
+                        </View>
+                    }
 
-                <Animatable.View
-                    animation='fadeInRight'
-                    delay={500}
-                    style={{
-                        width: '90%',
-                    }}
-                >
-                    <ButtonType
-                        onPress={() => handleLogin()}
-                    >
-                        Entrar
-                    </ButtonType>
-                </Animatable.View>
-
-                <Animatable.View
-                    animation='fadeInUp'
-                    delay={500}
-                >
-                    <Text
-                        style={{
-                            marginTop: 20,
-                        }}
-                    >
-                        Não tem uma conta ? <Text onPress={() => navigation.navigate('RegisterScreen')} style={{ fontWeight: 'bold' }}>Cadastre-se.</Text>
-                    </Text>
-                </Animatable.View>
+                </View>
+                
             </Animatable.View>
+            <FooterBar active={1} link={'HomeScreen'} />
         </>
     );
-};
+}
 
-export default LoginScreen;
+export default PostImageScreen;
